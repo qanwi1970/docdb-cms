@@ -4,7 +4,7 @@ namespace DocDB_CMS.Models
 {
     public class Content
     {
-        public long Id { get; set; }
+        public string Id { get; set; }
         public string Name { get; set; }
         public string Revision { get; set; }
         public bool Published { get; set; }

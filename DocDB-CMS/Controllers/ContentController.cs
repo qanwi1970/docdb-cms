@@ -20,7 +20,7 @@ namespace DocDB_CMS.Controllers
         }
 
         // GET: api/Content/5
-        public Content Get(long id)
+        public Content Get(string id)
         {
             return _repo.Get(id);
         }
@@ -32,13 +32,13 @@ namespace DocDB_CMS.Controllers
         }
 
         // PUT: api/Content/5
-        public Content Put(long id, [FromBody]Content value)
+        public Content Put(string id, [FromBody]Content value)
         {
             return _repo.Update(id, value);
         }
 
         // DELETE: api/Content/5
-        public void Delete(long id)
+        public void Delete(string id)
         {
             _repo.Delete(id);
         }

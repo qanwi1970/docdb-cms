@@ -6,9 +6,9 @@ namespace DocDB_CMS.Repositories
     public interface IContentRepository
     {
         List<Content> GetList();
-        Content Get(long id);
+        Content Get(string id);
         Content Add(Content content);
-        Content Update(long id, Content content);
-        void Delete(long id);
+        Content Update(string id, Content content);
+        void Delete(string id);
     }
 }
