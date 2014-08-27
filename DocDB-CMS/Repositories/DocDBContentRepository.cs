@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.Linq;
-using System.Runtime.InteropServices;
+using DocDB_CMS.Exceptions;
+using DocDB_CMS.Extensions;
 using DocDB_CMS.Models;
 using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.Client;
@@ -15,14 +15,14 @@ namespace DocDB_CMS.Repositories
         public List<Content> GetList()
         {
             var documentsLink = Collection.DocumentsLink;
-            var contentList = client.CreateDocumentQuery<Content>(documentsLink).AsEnumerable().ToList();
+            var contentList = _client.CreateDocumentQuery<Content>(documentsLink).AsEnumerable().ToList();
             return contentList;
         }
 
         public Content Get(string id)
         {
             //var content =
-            var query = client.CreateDocumentQuery<Content>(Collection.DocumentsLink).AsEnumerable().ToList();
+            var query = _client.CreateDocumentQuery<Content>(Collection.DocumentsLink).AsEnumerable().ToList();
             var filtered = query.Where(d => d.Id == id);
             var enumerable = filtered.AsEnumerable();
             var content = enumerable.FirstOrDefault();
@@ -44,12 +44,17 @@ namespace DocDB_CMS.Repositories
                     .AsEnumerable()
                     .FirstOrDefault();
 
+            if (doc == null)
+            {
+                throw new DocumentNotFoundException("Document with Id " + id + " not found.");
+            }
+
             var result = Client.ReplaceDocumentAsync(doc.SelfLink, content);
 
             return content;
         }
 
-        public void Delete(string id)
+        public async void Delete(string id)
         {
             var doc =
                 Client.CreateDocumentQuery<Document>(Collection.DocumentsLink)
@@ -57,118 +62,38 @@ namespace DocDB_CMS.Repositories
                     .AsEnumerable()
                     .FirstOrDefault();
 
-            var result = Client.DeleteDocumentAsync(doc.SelfLink).Result;
-        }
-
-        private static Database database;
-
-        private static Database Database
-        {
-            get
+            if (doc == null)
             {
-                if (database == null)
-                {
-                    ReadOrCreateDatabase();
-                }
-
-                return database;
+                throw new DocumentNotFoundException("Document with Id " + id + " not found.");
             }
+
+            await Client.DeleteDocumentAsync(doc.SelfLink);
         }
 
-        private static DocumentCollection collection;
+        private static readonly DocumentCollection Collection =
+            Client.GetDocumentCollection(DatabaseId, CollectionId).Result;
 
-        private static DocumentCollection Collection
-        {
-            get
-            {
-                if (collection == null)
-                {
-                    ReadOrCreateCollection(Database.SelfLink);
-                }
+        private const string DatabaseId = "ContentDB";
 
-                return collection;
-            }
-        }
+        private const string CollectionId = "ContentCollection";
 
-        private static string databaseId;
-
-        private static String DatabaseId
-        {
-            get
-            {
-                if (string.IsNullOrEmpty(databaseId))
-                {
-                    databaseId = "ContentDB"; // ConfigurationManager.AppSettings["database"];
-                }
-
-                return databaseId;
-            }
-        }
-
-        private static string collectionId;
-
-        private static String CollectionId
-        {
-            get
-            {
-                if (string.IsNullOrEmpty(collectionId))
-                {
-                    collectionId = "ContentCollection"; // ConfigurationManager.AppSettings["collection"];
-                }
-
-                return collectionId;
-            }
-        }
-
-        private static DocumentClient client;
+        private static DocumentClient _client;
 
         private static DocumentClient Client
         {
             get
             {
-                if (client == null)
+                if (_client == null)
                 {
                     String endpoint = "https://bd-cms.documents.azure.com:443/";
                         // ConfigurationManager.AppSettings["endpoint"];
                     string authKey =
-                        "<Don't forget to set this>";
+                        "zTvR2YODODGU6GrvS/aOxmF8LWpvDPWaL25iUF8b1JDglBq4bcnB1TafDvjKOfPJhD/tKftfMdr1i1r3fMDZuw==";
                         // ConfigurationManager.AppSettings["authKey"];
                     Uri endpointUri = new Uri(endpoint);
-                    client = new DocumentClient(endpointUri, authKey);
+                    _client = new DocumentClient(endpointUri, authKey);
                 }
-                return client;
-            }
-        }
-
-        private static void ReadOrCreateCollection(string databaseLink)
-        {
-            var collections = Client.CreateDocumentCollectionQuery(databaseLink)
-                .Where(col => col.Id == CollectionId).ToArray();
-
-            if (collections.Any())
-            {
-                collection = collections.First();
-            }
-            else
-            {
-                collection = Client.CreateDocumentCollectionAsync(databaseLink,
-                    new DocumentCollection {Id = CollectionId}).Result;
-            }
-        }
-
-        private static void ReadOrCreateDatabase()
-        {
-            var databases = Client.CreateDatabaseQuery()
-                .Where(db => db.Id == DatabaseId).ToArray();
-
-            if (databases.Any())
-            {
-                database = databases.First();
-            }
-            else
-            {
-                Database database = new Database {Id = DatabaseId};
-                database = Client.CreateDatabaseAsync(database).Result;
+                return _client;
             }
         }
     }
